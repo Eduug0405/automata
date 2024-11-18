@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automata - Patrones Encontrados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">Automata - Carga de Archivos y Patrones</h1>
+
+        <!-- Sección de carga de archivos -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-xl font-semibold mb-4">Sube tu archivo</h2>
+            <form id="upload-form" class="flex flex-col items-center" enctype="multipart/form-data" method="POST">
+                <label for="file-upload" class="block mb-2 text-sm font-medium text-gray-700">Selecciona un archivo (.txt, .pdf, .docx)</label>
+                <input type="file" id="file-upload" name="file-upload" accept=".txt,.pdf,.docx" class="mb-4 p-2 border border-gray-300 rounded-md">
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded">Subir archivo</button>
+            </form>
+        </div>
+
+        <!-- Sección para mostrar los patrones encontrados -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">Patrones encontrados</h2>
+            <ul id="patterns-list" class="list-disc list-inside text-gray-700">
+                <li>No hay patrones encontrados aún.</li>
+            </ul>
+
+            <!-- Botones para descargar PDF o Excel solo si hay patrones -->
+            <div id="export-buttons" class="mt-4" style="display: none;">
+                <button id="download-pdf" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded">Descargar PDF</button>
+                <button id="download-csv" class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded">Descargar CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const patternsList = document.getElementById('patterns-list');
+                patternsList.innerHTML = '';
+
+                if (data.patrones.length > 0) {
+                    data.patrones.forEach(patron => {
+                        const li = document.createElement('li');
+                        li.textContent = patron;
+                        patternsList.appendChild(li);
+                    });
+                    document.getElementById('export-buttons').style.display = 'block';
+
+                    // Botón para descargar PDF
+                    document.getElementById('download-pdf').addEventListener('click', function() {
+                        fetch('/download_pdf', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ patrones: data.patrones })
+                        })
+                        .then(response => response.blob())
+                        .then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'patrones_automata.pdf';
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                        });
+                    });
+
+                    // Botón para descargar Excel
+                    document.getElementById('download-csv').addEventListener('click', function() {
+                    const patrones = Array.from(document.querySelectorAll('#patterns-list li')).map(li => li.textContent);
+                    const query = patrones.map(p => `patrones=${encodeURIComponent(p)}`).join('&');
+                    window.location.href = `/download_csv?${query}`;
+                    });
+                } else {
+                    const li = document.createElement('li');
+                    li.textContent = 'No hay patrones encontrados aún.';
+                    patternsList.appendChild(li);
+                    document.getElementById('export-buttons').style.display = 'none';
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>
